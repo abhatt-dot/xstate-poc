@@ -1,4 +1,5 @@
 import './App.css';
+import { useState } from 'react';
 import { useMachine } from "@xstate/react";
 import { assign, createMachine } from 'xstate';
 
@@ -37,11 +38,12 @@ function App() {
   const { search } = state.context;
   console.log(search);
   let inputValue;
+  const [searchTerm, setSearchTerm] = useState(null);
 
   return (
     <div className="App">
-      <input type="text" name="name"  onChange={(e) => inputValue = e.target.value}required size="20"></input>
-      <button id="search" onClick={(e) => send("SEARCH", { search: inputValue })}> {state.matches("disabled") ? "hello" : search} </button>
+      <input type="text" name="name"  onChange={(e) => inputValue = setSearchTerm(e.target.value)}required size="20"></input>
+      <button id="search" onClick={(e) => send("SEARCH")}> {state.matches("disabled") ? "hello" : "different icon"} </button>
     </div>
   );
 }

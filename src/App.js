@@ -1,5 +1,5 @@
 import './App.css';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMachine } from "@xstate/react";
 import { assign, createMachine } from 'xstate';
 
@@ -8,44 +8,106 @@ import { assign, createMachine } from 'xstate';
 // state diagrams and user flows
 
 const searchMachine = createMachine({
-  // id: 'search',
+  id: 'search',
   initial: 'disabled',
   context: {
     search: null,
   },
   states: {
-    disabled: {},
-    searching: {},
-    reset: {}
+    disabled: {
+      on: {
+        ACTIVATE: {
+          target: 'active'
+        }
+      }
+    },
+    active: {
+      on: {
+        SEARCH: {
+          target: 'searching'
+        }
+      }
+    },
+    searching: {
+      on: {
+        RESULT: { 
+          target: 'reset'
+        }
+      }
+    },
+    reset: {
+      on: {
+        CLEAR: {
+          target: 'active'
+        }
+      }
+    }
   },
-  on: {
-    SEARCH: {
-      target: 'searching',
-      actions: assign({ search: (e) => e.search })
-      // when you search change the button to green + persist a search term
-    },
-    RESET: {
-      // when you click the button it shows reset button
-      // and clears the search
-    },
-    
-  }
 })
 
 function App() {
   const [state, send] = useMachine(searchMachine);
-  // const search = state.matches("disabled");
-  const { search } = state.context;
-  console.log(search);
-  let inputValue;
+  const [inputValue, setInputValue] = useState('');
   const [searchTerm, setSearchTerm] = useState(null);
+  console.log(state);
+  let isActive = false;
+  setTimeout(() => {
+    isActive = true;
+  }, 2000);
 
-  return (
-    <div className="App">
-      <input type="text" name="name"  onChange={(e) => inputValue = setSearchTerm(e.target.value)}required size="20"></input>
-      <button id="search" onClick={(e) => send("SEARCH")}> {state.matches("disabled") ? "hello" : "different icon"} </button>
-    </div>
-  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {send('ACTIVATE')}, [isActive])
+
+  switch (state.value) {
+    case 'disabled': {
+      return (<div className="App">
+          <input type="text" name="name" size="20" disabled></input>
+          <button id="search" disabled>#</button>
+        </div>)
+    }
+    case 'active': {
+        return (<div className="App">
+          <input type="text" name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
+          <button id="search" onClick={(e) => { if (inputValue) {
+            setSearchTerm(inputValue);
+            send("SEARCH")
+          }}}> Search </button>
+        </div>)
+    }
+    case 'searching': {
+      setTimeout(() => {send("RESULT");}, 3000);
+      return (
+        <div>
+          <input type="text" name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
+          <button>Spinner</button>
+        </div>
+      )
+    }
+    case 'reset': {
+        return (<div className="App">
+          <input type="text" name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
+          <button id="search" disabled>Search</button>
+          <button id='clear' onClick={() => send("CLEAR")}>x</button>
+          <p> SearchTerm: {searchTerm}</p>
+        </div>);
+    }
+    default: {
+     return ( <div className="App">
+          <input type="text" name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
+          <button id="search" onClick={(e) => { if (inputValue) {
+            setSearchTerm(inputValue);
+            send("SEARCH")
+          }}}> Search </button>
+        </div>)
+    
+    }
+  }
+
+
 }
 
 export default App;
+
+
+// disabled = timer goes off => active => doSearch => searchState => resetState => activeState || searchState// DOI lookup
+// disabled = timer goes off => active => doSearch => resetState // search

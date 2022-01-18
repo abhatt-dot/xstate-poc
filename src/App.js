@@ -1,15 +1,12 @@
 import './App.css';
 import { useState, useEffect } from 'react';
 import { useMachine } from "@xstate/react";
-import { assign, createMachine } from 'xstate';
+import { createMachine } from 'xstate';
 
-// we need:
-// show all the different states for searching: ready, loading and reset
-// state diagrams and user flows
 
 const searchMachine = createMachine({
   id: 'search',
-  initial: 'disabled',
+  initial: 'active',
   context: {
     search: null,
   },
@@ -25,6 +22,9 @@ const searchMachine = createMachine({
       on: {
         SEARCH: {
           target: 'searching'
+        },
+        SYNC: {
+          target: 'disabled'
         }
       }
     },
@@ -48,60 +48,70 @@ const searchMachine = createMachine({
 function App() {
   const [state, send] = useMachine(searchMachine);
   const [inputValue, setInputValue] = useState('');
-  const [searchTerm, setSearchTerm] = useState(null);
-  console.log(state);
-  let isActive = false;
-  setTimeout(() => {
-    isActive = true;
-  }, 2000);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {send('ACTIVATE')}, [isActive])
-
-  switch (state.value) {
-    case 'disabled': {
-      return (<div className="App">
-          <input type="text" name="name" size="20" disabled></input>
-          <button id="search" disabled>#</button>
-        </div>)
-    }
-    case 'active': {
-        return (<div className="App">
-          <input type="text" name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
-          <button id="search" onClick={(e) => { if (inputValue) {
-            setSearchTerm(inputValue);
-            send("SEARCH")
-          }}}> Search </button>
-        </div>)
-    }
-    case 'searching': {
-      setTimeout(() => {send("RESULT");}, 3000);
-      return (
-        <div>
-          <input type="text" name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
-          <button>Spinner</button>
-        </div>
-      )
-    }
-    case 'reset': {
-        return (<div className="App">
-          <input type="text" name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
-          <button id="search" disabled>Search</button>
-          <button id='clear' onClick={() => send("CLEAR")}>x</button>
-          <p> SearchTerm: {searchTerm}</p>
-        </div>);
-    }
-    default: {
-     return ( <div className="App">
-          <input type="text" name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
-          <button id="search" onClick={(e) => { if (inputValue) {
-            setSearchTerm(inputValue);
-            send("SEARCH")
-          }}}> Search </button>
-        </div>)
-    
+  const getRenderedComponent = (state) => {
+    switch (state.value) {
+      case 'disabled': {
+        return (<div>
+            <input type="text" name="name" size="20" disabled></input>
+            <button id="search" disabled>#</button>
+          </div>)
+      }
+      case 'active': {
+          return (<div>
+            <input type="text" value={inputValue} name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
+            <button id="search" onClick={(e) => { if (inputValue) {
+              setSearchTerm(inputValue);
+              send("SEARCH")
+            }}}> Search </button>
+          </div>)
+      }
+      case 'searching': {
+        setTimeout(() => {send("RESULT");}, 3000);
+        return (
+          <div>
+            <input type="text" value={inputValue} name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
+            <button className="searchButton">Spinner</button>
+          </div>
+        )
+      }
+      case 'reset': {
+          return (<div>
+            <input type="text" value={inputValue} name="name"  onChange={(e) => setSearchTerm(e.target.value)}required size="20"></input>
+            <button id='clear' onClick={() => {
+              send("CLEAR");
+              setInputValue('');
+              setSearchTerm('');
+              }}>x</button>
+            <button  id="search" disabled>Search</button>
+            <p> SearchTerm: {searchTerm}</p>
+          </div>);
+      }
+      default: {
+      return ( <div>
+            <input type="text" value={inputValue} name="name"  onChange={(e) => setInputValue(e.target.value)}required size="20"></input>
+            <button id="search" onClick={(e) => { if (inputValue) {
+              setSearchTerm(inputValue);
+              send("SEARCH")
+            }}}> Search </button>
+          </div>)
+      
+      }
     }
   }
+
+  return (
+    <div className='App'>
+      <button onClick={() => {
+        send("SYNC");
+        setTimeout(() => {
+          send("ACTIVATE")
+        }, 2000);
+      }}>Sync</button>
+      {getRenderedComponent(state)}
+    </div>
+  )
 
 
 }

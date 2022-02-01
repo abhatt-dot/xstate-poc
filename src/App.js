@@ -1,31 +1,41 @@
 import './App.css';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useMachine } from "@xstate/react";
-import { createMachine } from 'xstate';
+import { createMachine, assign } from 'xstate';
 
 
 const searchMachine = createMachine({
   id: 'search',
-  initial: 'active',
+  initial: 'default',
   context: {
-    canSearch: null,
+    canSearch: true,
+    searchTerm: null,
   },
   states: {
     disabled: {
       on: {
         ACTIVATE: {
-          target: 'active'
+          target: 'default',
+          actions: assign({
+            canSearch: (context, event) => event.query
+          }),
         }
       }
     },
-    active: {
+    default: {
       on: {
         SEARCH: {
           target: 'searching',
+          actions: assign({
+            searchTerm: (_, event) => event.query
+          }),
           cond: 'searchValid'
         },
         SYNC: {
-          target: 'disabled'
+          target: 'disabled',
+          actions: assign({
+            canSearch: (_, event) => event.query
+          }),
         }
       }
     },
@@ -39,7 +49,7 @@ const searchMachine = createMachine({
     reset: {
       on: {
         CLEAR: {
-          target: 'active'
+          target: 'default'
         },
         SEARCH: {
           target: 'searching'
@@ -50,9 +60,7 @@ const searchMachine = createMachine({
 },
 {
   guards: {
-    searchValid: (context, event) => {
-      return event.query.length ? true : alert('This is not a valid search value')
-    }
+    searchValid: (_, event) => event.query.length > 0 ? true : alert('This is not a valid search value'),
   }
 }
 )
@@ -60,24 +68,14 @@ const searchMachine = createMachine({
 function App() {
   const [state, send] = useMachine(searchMachine);
   const [inputValue, setInputValue] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-
-
+  const { canSearch, searchTerm } = state.context;
 
   const getRenderedComponent = (state) => {
     switch (state.value) {
       case 'disabled': {
         return (
-            <button id="search" disabled>#</button>
+            <button id="search" disabled={!canSearch} >#</button>
           )
-      }
-      case 'active': {
-          return (
-            <button id="search" onClick={(e) => { 
-              setSearchTerm(inputValue);
-              send("SEARCH", {query: inputValue})
-            }}> Search </button>
-        )
       }
       case 'searching': {
         setTimeout(() => {send("RESULT");}, 3000);
@@ -89,26 +87,22 @@ function App() {
           return (
             <>
             <button id='clear' onClick={() => {
-              send("CLEAR");
+              send("CLEAR", {query: inputValue});
               setInputValue('');
-              setSearchTerm('');
               }}>x</button>
-            <button  id="search" onClick={(e) => { if (inputValue) {
-              setSearchTerm(inputValue);
-              send("SEARCH")
-            }}} >Search</button>
+            <button  id="search" onClick={() => {
+              send("SEARCH", {query: inputValue})
+            }} >Search</button>
             <p> SearchTerm: {searchTerm}</p>
             </>
       );
       }
       default: {
       return ( 
-            <button id="search" onClick={(e) => { if (inputValue) {
-              setSearchTerm(inputValue);
-              send("SEARCH")
-            }}}> Search </button>
+            <button id="search" onClick={() => {
+              send("SEARCH", {query: inputValue})
+            }}> Search </button>
         )
-      
       }
     }
   }
@@ -116,13 +110,13 @@ function App() {
   return (
     <div className='App'>
       <button onClick={() => {
-        send("SYNC");
-        setTimeout(() => {
-          send("ACTIVATE")
+          send("SYNC", {query: false})
+          setTimeout(() => {
+            send("ACTIVATE", {query: true})
         }, 2000);
       }}>Sync</button>
       <div>
-      <input type="text" value={inputValue} name="name" onChange={(e) => setInputValue(e.target.value)} required size="20"/>
+      <input type="text" value={inputValue} name="name" onChange={(e) => setInputValue(e.target.value)} disabled={!canSearch} required size="20"/>
       {getRenderedComponent(state)}
       </div>
     </div>

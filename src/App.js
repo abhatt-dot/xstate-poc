@@ -17,7 +17,7 @@ const searchMachine = createMachine({
         ACTIVATE: {
           target: 'default',
           actions: assign({
-            canSearch: (context, event) => event.query
+            canSearch: (context, event) => event.searchEnabled
           }),
         }
       }
@@ -34,7 +34,7 @@ const searchMachine = createMachine({
         SYNC: {
           target: 'disabled',
           actions: assign({
-            canSearch: (_, event) => event.query
+            canSearch: (_, event) => event.searchEnabled
           }),
         }
       }
@@ -69,6 +69,12 @@ function App() {
   const [state, send] = useMachine(searchMachine);
   const [inputValue, setInputValue] = useState('');
   const { canSearch, searchTerm } = state.context;
+
+  setInterval(() => {
+    send("SYNC", { searchEnabled: false} );
+    setTimeout(() => {
+      send("ACTIVATE", {searchEnabled: true})}, 1000);
+  }, 10000);
 
   const getRenderedComponent = (state) => {
     switch (state.value) {
@@ -107,24 +113,14 @@ function App() {
     }
   }
 
+
+
   return (
     <div className='App'>
-      <button onClick={() => {
-          send("SYNC", {query: false})
-          setTimeout(() => {
-            send("ACTIVATE", {query: true})
-        }, 2000);
-      }}>Sync</button>
-      <div>
       <input type="text" value={inputValue} name="name" onChange={(e) => setInputValue(e.target.value)} disabled={!canSearch} required size="20"/>
       {getRenderedComponent(state)}
-      </div>
     </div>
   )
 }
 
 export default App;
-
-
-// disabled = timer goes off => active => doSearch => searchState => resetState => activeState || searchState// DOI lookup
-// disabled = timer goes off => active => doSearch => resetState // search
